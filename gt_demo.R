@@ -31,6 +31,7 @@ my_films |>
 films_tbl <- my_films |> 
   group_by(production_company) |> 
   gt(rowname_col = "title_year")
+films_tbl
 
 # Add header and source note
 films_tbl <- films_tbl |> 
@@ -366,6 +367,12 @@ mtcars_tbl %>%
 
 
 # gtsummary for regression tables
-m <- lm(mpg ~ wt + factor(cyl), data = mtcars)
-tbl_regression(m)
-
+m <- lm(mpg ~ wt + hp + factor(cyl), data = mtcars)
+tbl_reg <- tbl_regression(m)
+tbl_reg
+tbl_reg |> 
+  gtsummary::as_gt() |> 
+  tab_header(
+    "Modeling MPG w/mtcars"
+  ) |> 
+  gtExtras::gt_theme_538()
