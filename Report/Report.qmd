@@ -1,0 +1,211 @@
+---
+title: "Making Cool Tables in R"
+subtitle: "R Brown Bag #5"
+author: "David Ranzolin"
+date: "`r Sys.Date()`"
+embed-resources: true
+format:
+  oewd-report-html: default
+output-file: "tables_demo_report"
+execute: 
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r}
+library(gt)
+library(gtExtras)
+library(gtsummary)
+library(reactable)
+library(tinytable)
+library(janitor)
+library(tidyverse)
+```
+
+# gt 
+
+## Get and clean data
+
+```{r}
+#| cache: true
+
+films <- read_csv("https://data.sfgov.org/resource/yitu-d5am.csv?$limit=999999")
+
+set.seed(2)
+my_films <- films |> 
+  select(1:11, -fun_facts, -locations, -distributor) |>
+  filter(if_all(starts_with("actor"), \(x) !is.na(x))) |> 
+  distinct() |> 
+  mutate(gross = sample(100000:999999, size = n())) |> 
+  group_by(production_company) |> 
+  filter(n() >= 3) |> 
+  slice_sample(n = 3) |> 
+  ungroup() |> 
+  arrange(production_company, release_year) |> 
+  slice_tail(n = 12) |> 
+  mutate(title_year = glue::glue("{title} ({release_year})")) |> 
+  select(-release_year, -title)
+```
+
+## Table
+
+```{r}
+#| column: page
+films_table <- my_films |> 
+  mutate(gross2 = gross, .after = gross) |> 
+  group_by(production_company) |> 
+  gt(rowname_col = "title_year") |> 
+  tab_header(
+    md("**A Sprinkle of San Francisco Cinema**"),
+    "Three Films from Three Production Companies"
+  ) |> 
+  tab_spanner(
+    "Cast",
+    columns = starts_with("actor")
+  ) |> 
+  tab_spanner(
+    "Staff",
+    columns = c(director, writer)
+  ) |>
+  fmt_currency(
+    columns = gross,
+    decimals = 0
+  ) |> 
+  cols_label(
+    starts_with("actor") ~ "",
+    director = "Director",
+    writer = "Writer",
+    gross = "Gross",
+    gross2 = ""
+  ) |> 
+  cols_merge(
+    columns = starts_with("actor"),
+    pattern = ("<ul><li>{1}</li><li>{2}</li><li>{3}</li></ul>")
+  ) |>
+  tab_style(
+    style = list(
+      cell_text(
+        style = "italic",
+        align = "right"
+      )
+    ),
+    locations = cells_stub()
+  ) |> 
+  tab_style(
+    style = list(
+      cell_text(weight = "bold")
+    ),
+    locations = cells_row_groups()
+  ) |> 
+  summary_rows(
+    columns = gross,
+    fns = list(Total = ~sum(.)),
+    formatter = fmt_currency,
+    decimals = 0
+  ) |> 
+  grand_summary_rows(
+    columns = gross,
+    fns = list(`Grand Total` = ~sum(.)),
+    formatter = fmt_currency,
+    decimals = 0
+  ) |> 
+  gtExtras::gt_plt_bar_pct(
+    column = gross2,
+    fill = "darkgreen",
+    width = 200
+  ) |> 
+  gtExtras::gt_theme_538() |> 
+  tab_options(quarto.disable_processing = TRUE)
+
+films_table
+```
+
+
+# gtsummary Regression Table
+
+```{r}
+m <- lm(mpg ~ wt + factor(cyl), data = mtcars)
+tbl_regression(m)
+```
+
+
+# reactable Clients Table
+
+```{r}
+grants <- c("CDBG/General Fund", "WIOA Adult", "WIOA Youth", "WIOA Dislocated Worker")
+
+client_data <- charlatan::ch_generate(n = 50) |> 
+  mutate(
+    grant = sample(grants, size = 50, replace = TRUE),
+    id = row_number()
+  )
+
+summary_data <- client_data |> 
+  tabyl(grant) |> 
+  adorn_totals() |> 
+  select(grant, clients = n)
+
+row_details <- function(index) {
+  
+  if (index != nrow(summary_data)) {
+    gc <- summary_data$grant[index]
+    df <- client_data |> 
+      filter(grant == gc) |> 
+      select(-grant) |> 
+      relocate(id, .before = 1)
+    
+    reactable(
+      df,
+      filterable = TRUE,
+      sortable = TRUE,
+      pagination = FALSE,
+      highlight = TRUE,
+      compact = TRUE,
+      wrap = FALSE
+    )
+  }
+}
+
+reactable(
+  summary_data,
+  sortable = TRUE,
+  pagination = FALSE,
+  highlight = TRUE,
+  compact = TRUE,
+  details = row_details,
+)
+
+```
+
+
+# tinytable Inline Plots Table
+
+```{r}
+plot_data <- list(mtcars$mpg, mtcars$hp, mtcars$qsec)
+
+dat <- data.frame(
+  Variables = c("mpg", "hp", "qsec"),
+  Histogram = "",
+  Density = "",
+  Bar = "",
+  Line = ""
+)
+
+# random data for sparklines
+lines <- lapply(1:3, \(x) data.frame(x = 1:10, y = rnorm(10)))
+
+tt(dat) |>
+  plot_tt(j = 2, fun = "histogram", data = plot_data) |>
+  plot_tt(j = 3, fun = "density", data = plot_data, color = "darkgreen") |>
+  plot_tt(j = 4, fun = "bar", data = list(2, 3, 6), color = "orange") |>
+  plot_tt(j = 5, fun = "line", data = lines, color = "blue") |>
+  style_tt(j = 2:5, align = "c")
+```
+
+
+# About this Report
+
+This HTML report was created with [Quarto.](https://quarto.org/) The data within is self-contained and cannot be updated automatically. If you bookmark the report within your browser, be aware that the bookmark URL references a file path on your computer; moving the document to a different location will break the bookmark.
+
+![](_extensions/SFOEWD/oewd-report/assets/OEWD%20Circle%20Logo.png){fig-align="center" width="225"}

@@ -1,0 +1,14 @@
+title: Oewd-report
+author: David Ranzolin
+version: 1.0.0
+quarto-required: ">=1.2.0"
+contributes:
+  formats:
+    html:
+      code-fold: true
+      code-summary: "Show the code"
+      toc: true
+      toc-title: "Navigation"
+      toc-location: left
+      theme: [yeti, custom.scss]
+      code-block-bg: "#e8e8e8"
