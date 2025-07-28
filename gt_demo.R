@@ -8,6 +8,8 @@ library(tidyverse)
 films <- read_csv("https://data.sfgov.org/resource/yitu-d5am.csv?$limit=999999")
 
 set.seed(2)
+# Get a sample of 12 films by four production companies
+# with three actors listed
 my_films <- films |> 
   select(1:11, -fun_facts, -locations, -distributor) |>
   filter(if_all(starts_with("actor"), \(x) !is.na(x))) |> 
@@ -26,8 +28,9 @@ glimpse(my_films)
 
 my_films |> 
   gt()
+# ?gt
 
-# Add groups and rows
+# Add groups and rows to 'visual hierarchy'
 films_tbl <- my_films |> 
   group_by(production_company) |> 
   gt(rowname_col = "title_year")
@@ -36,7 +39,7 @@ films_tbl
 # Add header and source note
 films_tbl <- films_tbl |> 
   tab_header(
-    md("**A Sprinkle of San Francisco Cinema**"),
+    md("**A Sample of San Francisco Cinema**"),
     "Three Films from Three Production Companies"
   ) |> 
   tab_source_note(md("Source: ['Film Locations in San Francisco', DataSF | Open Data Portal](https://data.sfgov.org/Culture-and-Recreation/Film-Locations-in-San-Francisco/yitu-d5am/about_data)"))
@@ -45,12 +48,12 @@ films_tbl
 # Add 'spanners'
 films_tbl <- films_tbl |> 
   tab_spanner(
-    "Cast",
-    columns = starts_with("actor")
-  ) |> 
-  tab_spanner(
     "Staff",
     columns = c(director, writer)
+  ) |> 
+  tab_spanner(
+    "Cast",
+    columns = starts_with("actor")
   )
 films_tbl
 
@@ -90,6 +93,7 @@ films_tbl <- films_tbl |>
     locations = cells_row_groups()
   )
 films_tbl
+# ?tab_style
 
 # Conditional coloring
 films_tbl |> 
@@ -97,6 +101,7 @@ films_tbl |>
     columns = gross,
     colors = "Greens"
   )
+# ?data_color
 
 # Add summary rows
 films_tbl <- films_tbl |> 
@@ -121,7 +126,7 @@ films_tbl <- my_films |>
   group_by(production_company) |> 
   gt(rowname_col = "title_year") |> 
   tab_header(
-    md("**A Sprinkle of San Francisco Cinema**"),
+    md("**A Sample of San Francisco Cinema**"),
     "Three Films from Three Production Companies"
   ) |> 
   tab_spanner(
@@ -161,19 +166,18 @@ films_tbl <- my_films |>
   summary_rows(
     columns = gross,
     fns = list(Total = ~sum(.)),
-    formatter = fmt_currency,
-    decimals = 0
+    fmt = ~fmt_number(., decimals = 0)
   ) |> 
   grand_summary_rows(
     columns = gross,
     fns = list(`Grand Total` = ~sum(.)),
-    formatter = fmt_currency,
-    decimals = 0
+    fmt = ~fmt_number(., decimals = 0)
   ) |> 
   gtExtras::gt_plt_bar_pct(
     column = gross2,
     fill = "darkgreen"
   )
+films_tbl
 
 # Additional style
 films_tbl <- films_tbl |> 
@@ -182,7 +186,7 @@ films_tbl <- films_tbl |>
     pattern = ("<ul><li>{1}</li><li>{2}</li><li>{3}</li></ul>")
   )
 films_tbl
-
+# ?cols_merge
 
 # themes
 films_tbl |> 
@@ -202,7 +206,7 @@ my_films |>
   group_by(production_company) |>
   gt(rowname_col = "title_year") |> # rowname_col = "title_year"
   tab_header(
-    md("**A Sprinkle of San Francisco Cinema**"),
+    md("**A Sample of San Francisco Cinema**"),
     "Three Films from Three Production Companies"
   ) |> 
   tab_spanner(
@@ -228,6 +232,10 @@ my_films |>
     gross = "Gross",
     gross2 = "",
     film_img = ""
+  ) |> 
+  cols_merge(
+    columns = starts_with("actor"),
+    pattern = ("<ul><li>{1}</li><li>{2}</li><li>{3}</li></ul>")
   ) |> 
   tab_style(
     style = list(
